@@ -47,8 +47,9 @@ REGEX_USER_AGENTS_WITHOUT_PROXY_CONNECTION_HEADER = compile(r'\r\nUser-Agent: .*
 
 
 class WorkerThread(Thread):
-    def __init__(self, q):
+    def __init__(self, q, options):
         self.q = q
+        self.nosleep = options['nosleep']
         Thread.__init__(self)
 
     def run(self):
@@ -129,7 +130,8 @@ class WorkerThread(Thread):
                 req_sc.connect((host, port))
                 req_sc.send('%s\r\n' % new_head)
 
-                sleep(0.2)
+                if not self.nosleep:
+                    sleep(0.2)
 
                 req_sc.setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
                 req_sc.send('Host: ')
@@ -141,7 +143,8 @@ class WorkerThread(Thread):
                         phost = phost[i:]
                         i = random.randrange(2, 5)
                 for delay, c in feed_phost(phost):
-                    sleep(delay/10.0)
+                    if not self.nosleep:
+                        sleep(delay/10.0)
                     req_sc.send(c)
                 req_sc.setsockopt(IPPROTO_TCP, TCP_NODELAY, 0)
                 req_sc.sendall('\r\n' + '\r\n'.join(sreq))
@@ -167,15 +170,16 @@ class WorkerThread(Thread):
 
 
 class Server(object):
-    def __init__(self, hostname, port, count):
+    def __init__(self, hostname, port, count, nosleep):
         self.hostname = hostname
         self.port = port
         self.count = count
+        self.nosleep = nosleep
         self.q = Queue()
 
     def start(self):
         for i in range(0, self.count):
-            th = WorkerThread(self.q)
+            th = WorkerThread(self.q, {'nosleep': self.nosleep})
             th.name = 'Worker #%d' % (i + 1)
             th.daemon = True
             th.start()
@@ -205,6 +209,8 @@ def main():
                       help='Port to listen [%default]')
     parser.add_option('-c', '--count', type='int', default=64,
                       help='Count of thread to spawn [%default]')
+    parser.add_option('--nosleep', action="store_true",
+                      help='No time delay during send HTTP Host')
     parser.add_option('-v', '--verbose', action="store_true",
                       help='Print verbose')
     options, args = parser.parse_args()
@@ -215,7 +221,7 @@ def main():
     else:
         lv = logging.INFO
     logging.basicConfig(level=lv, format='[%(asctime)s] {%(levelname)s} %(message)s')
-    server = Server(options.host, options.port, options.count)
+    server = Server(options.host, options.port, options.count, options.nosleep)
     try:
         return server.start()
     except KeyboardInterrupt:
