@@ -125,12 +125,13 @@ class WorkerThread(Thread):
 
             try:
                 req_sc = socket(AF_INET, SOCK_STREAM)
-                req_sc.setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
+                #req_sc.setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
                 req_sc.connect((host, port))
                 req_sc.send('%s\r\n' % new_head)
 
                 sleep(0.2)
 
+                req_sc.setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
                 req_sc.send('Host: ')
                 def feed_phost(phost):
                     import random
@@ -142,6 +143,7 @@ class WorkerThread(Thread):
                 for delay, c in feed_phost(phost):
                     sleep(delay/10.0)
                     req_sc.send(c)
+                req_sc.setsockopt(IPPROTO_TCP, TCP_NODELAY, 0)
                 req_sc.sendall('\r\n' + '\r\n'.join(sreq))
                 req_sc.send('\r\n\r\n')
 
