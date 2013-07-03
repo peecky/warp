@@ -148,7 +148,6 @@ class WorkerThread(Thread):
                     req_sc.send(c)
                 req_sc.setsockopt(IPPROTO_TCP, TCP_NODELAY, 0)
                 req_sc.sendall('\r\n' + '\r\n'.join(sreq))
-                req_sc.send('\r\n\r\n')
 
             except:
                 pass
