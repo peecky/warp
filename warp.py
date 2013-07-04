@@ -98,6 +98,8 @@ class WorkerThread(Thread):
             for line in req[1:]:
                 if "Host: " in line:
                     phost = line[6:]
+                elif "Connection: " in line:
+                    sreq.append("Connection: close")
                 elif not 'Proxy-Connection' in line:
                     sreq.append(line)
                     if len(line) == 0 and sreqHeaderEndIndex == 0:
