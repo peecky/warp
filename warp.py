@@ -66,6 +66,7 @@ class WorkerThread(Thread):
                         if len(cont) == 0 and retry == 0:
                             retry += 1
                             sleep(0.2)
+                            continue
                         else:
                             break
                     cont += data
