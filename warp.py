@@ -59,13 +59,23 @@ class WorkerThread(Thread):
             logging.debug('%s: Accept new task' % self.name)
             cont = ''
             try:
+                retry = 0
                 while True:
                     data = conn.recv(1024)
                     if not data:
-                        break
+                        if len(cont) == 0 and retry == 0:
+                            retry += 1
+                            sleep(0.2)
+                        else:
+                            break
                     cont += data
                     if data.find('\r\n\r\n') != -1:
                         break
+                if len(cont) == 0:
+                    conn.close()
+                    self.q.task_done()
+                    logging.debug('!!! %s: Task reject (empty request)' % (self.name,))
+                    return
                 m = REGEX_CONTENT_LENGTH.search(cont)
                 if m:
                     cl = int(m.group(1))
@@ -82,14 +92,14 @@ class WorkerThread(Thread):
             if not m1 and not m2:
                 conn.close()
                 self.q.task_done()
-                logging.debug('!!! %s: Task reject (no proxy. direct access?)' % (self.name,))
+                logging.debug('!!! %s: Task reject (no proxy header. direct access?)' % (self.name,))
                 return
 
             req = cont.split('\r\n')
             if len(req) < 4:
                 conn.close()
                 self.q.task_done()
-                logging.debug('!!! %s: Task reject (empty or invalid request) %s' % (self.name, cont))
+                logging.debug('!!! %s: Task reject (invalid request) %s' % (self.name, cont))
                 return
             head = req[0].split(' ')
             phost = False
